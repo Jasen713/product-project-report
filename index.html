@@ -22,6 +22,9 @@
     body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
     .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
     .chart-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .loading-spinner { width: 40px; height: 40px; border: 4px solid #e5e7eb; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 antialiased">
@@ -35,39 +38,34 @@
           </div>
           <div>
             <h1 class="text-xl font-bold text-gray-900">产品项目统计报表</h1>
-            <p class="text-sm text-gray-500">产品项目管理系统</p>
+            <p class="text-sm text-gray-500" id="updateTime">加载中...</p>
           </div>
         </div>
         <div class="flex items-center gap-4">
           <div class="relative">
-            <select id="yearFilter" class="appearance-none bg-gray-100 border-0 px-4 py-2 pr-8 rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-200 transition">
+            <select id="yearFilter" onchange="filterData()" class="appearance-none bg-gray-100 border-0 px-4 py-2 pr-8 rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-200 transition">
               <option value="all">全部年份</option>
-              <option value="2025" selected>2025年</option>
+              <option value="2025">2025年</option>
               <option value="2026">2026年</option>
             </select>
             <i class="fas fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
           </div>
-          <div class="relative">
-            <select id="quarterFilter" class="appearance-none bg-gray-100 border-0 px-4 py-2 pr-8 rounded-lg text-sm font-medium cursor-pointer hover:bg-gray-200 transition">
-              <option value="all">全部季度</option>
-              <option value="Q1">Q1</option>
-              <option value="Q2">Q2</option>
-              <option value="Q3">Q3</option>
-              <option value="Q4">Q4</option>
-            </select>
-            <i class="fas fa-chevron-down absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-          </div>
-          <button onclick="refreshData()" class="flex items-center gap-2 bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition">
+          <button onclick="syncData()" class="flex items-center gap-2 bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-zinc-700 transition">
             <i class="fas fa-sync-alt"></i>
-            刷新数据
+            手动同步
           </button>
         </div>
       </div>
     </div>
   </header>
 
+  <!-- Loading State -->
+  <div id="loadingIndicator" class="loading">
+    <div class="loading-spinner"></div>
+  </div>
+
   <!-- Main Content -->
-  <main class="max-w-7xl mx-auto px-6 py-8">
+  <main id="mainContent" class="max-w-7xl mx-auto px-6 py-8 hidden">
     <!-- Stats Cards -->
     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 mb-8">
       <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all duration-300 cursor-pointer">
@@ -77,7 +75,7 @@
           </div>
           <span class="text-xs font-medium text-green-500 bg-green-50 px-2 py-1 rounded-full">总计</span>
         </div>
-        <p class="text-3xl font-bold text-gray-900 mb-1" id="totalProjects">82</p>
+        <p class="text-3xl font-bold text-gray-900 mb-1" id="totalProjects">-</p>
         <p class="text-sm text-gray-500">总项目数</p>
       </div>
       <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all duration-300 cursor-pointer">
@@ -85,9 +83,8 @@
           <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
             <i class="fas fa-check-circle text-green-500 text-xl"></i>
           </div>
-          <span class="text-xs font-medium text-green-500 bg-green-50 px-2 py-1 rounded-full">100%</span>
         </div>
-        <p class="text-3xl font-bold text-gray-900 mb-1" id="deliveredCount">68</p>
+        <p class="text-3xl font-bold text-gray-900 mb-1" id="deliveredCount">-</p>
         <p class="text-sm text-gray-500">已交付</p>
       </div>
       <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all duration-300 cursor-pointer">
@@ -95,9 +92,8 @@
           <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
             <i class="fas fa-spinner text-blue-500 text-xl"></i>
           </div>
-          <span class="text-xs font-medium text-blue-500 bg-blue-50 px-2 py-1 rounded-full">进行中</span>
         </div>
-        <p class="text-3xl font-bold text-gray-900 mb-1" id="inProgressCount">8</p>
+        <p class="text-3xl font-bold text-gray-900 mb-1" id="inProgressCount">-</p>
         <p class="text-sm text-gray-500">开发中</p>
       </div>
       <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all duration-300 cursor-pointer">
@@ -105,19 +101,8 @@
           <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
             <i class="fas fa-exclamation-triangle text-red-500 text-xl"></i>
           </div>
-          <span class="text-xs font-medium text-red-500 bg-red-50 px-2 py-1 rounded-full">延期</span>
         </div>
-        <p class="text-3xl font-bold text-gray-900 mb-1" id="delayedCount">6</p>
-        <p class="text-sm text-gray-500">延期交付</p>
-      </div>
-      <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all duration-300 cursor-pointer">
-        <div class="flex items-center justify-between mb-4">
-          <div class="w-12 h-12 bg-zinc-100 rounded-xl flex items-center justify-center">
-            <i class="fas fa-ban text-zinc-500 text-xl"></i>
-          </div>
-          <span class="text-xs font-medium text-zinc-500 bg-zinc-100 px-2 py-1 rounded-full">终止</span>
-        </div>
-        <p class="text-3xl font-bold text-gray-900 mb-1" id="cancelledCount">3</p>
+        <p class="text-3xl font-bold text-gray-900 mb-1" id="cancelledCount">-</p>
         <p class="text-sm text-gray-500">取消/失败</p>
       </div>
       <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all duration-300 cursor-pointer">
@@ -125,84 +110,48 @@
           <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
             <i class="fas fa-clock text-purple-500 text-xl"></i>
           </div>
-          <span class="text-xs font-medium text-purple-500 bg-purple-50 px-2 py-1 rounded-full">准时</span>
         </div>
-        <p class="text-3xl font-bold text-gray-900 mb-1" id="onTimeRate">82%</p>
+        <p class="text-3xl font-bold text-gray-900 mb-1" id="onTimeRate">-</p>
         <p class="text-sm text-gray-500">交付及时率</p>
+      </div>
+      <div class="stat-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100 transition-all duration-300 cursor-pointer">
+        <div class="flex items-center justify-between mb-4">
+          <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center">
+            <i class="fas fa-chart-pie text-amber-500 text-xl"></i>
+          </div>
+        </div>
+        <p class="text-3xl font-bold text-gray-900 mb-1" id="koRate">-</p>
+        <p class="text-sm text-gray-500">KO达成率</p>
       </div>
     </div>
 
     <!-- Charts Row -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-      <!-- KO达成率 -->
       <div class="chart-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-lg font-bold text-gray-900">KO 达成率</h3>
-          <span class="text-sm text-green-500 font-medium">计划 vs 实际</span>
-        </div>
-        <div id="koChart" style="height: 220px;"></div>
-        <div class="mt-4 flex items-center justify-center gap-6">
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span class="text-sm text-gray-600">计划</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-green-500"></div>
-            <span class="text-sm text-gray-600">实际</span>
-          </div>
-        </div>
+        <h3 class="text-lg font-bold text-gray-900 mb-4">KO 达成率</h3>
+        <div id="koChart" style="height: 200px;"></div>
       </div>
-      <!-- DR达成率 -->
       <div class="chart-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-lg font-bold text-gray-900">DR 达成率</h3>
-          <span class="text-sm text-green-500 font-medium">计划 vs 实际</span>
-        </div>
-        <div id="drChart" style="height: 220px;"></div>
-        <div class="mt-4 flex items-center justify-center gap-6">
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span class="text-sm text-gray-600">计划</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-green-500"></div>
-            <span class="text-sm text-gray-600">实际</span>
-          </div>
-        </div>
+        <h3 class="text-lg font-bold text-gray-900 mb-4">DR 达成率</h3>
+        <div id="drChart" style="height: 200px;"></div>
       </div>
-      <!-- CR达成率 -->
       <div class="chart-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center justify-between mb-6">
-          <h3 class="text-lg font-bold text-gray-900">CR 达成率</h3>
-          <span class="text-sm text-green-500 font-medium">计划 vs 实际</span>
-        </div>
-        <div id="crChart" style="height: 220px;"></div>
-        <div class="mt-4 flex items-center justify-center gap-6">
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-blue-500"></div>
-            <span class="text-sm text-gray-600">计划</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <div class="w-3 h-3 rounded-full bg-green-500"></div>
-            <span class="text-sm text-gray-600">实际</span>
-          </div>
-        </div>
+        <h3 class="text-lg font-bold text-gray-900 mb-4">CR 达成率</h3>
+        <div id="crChart" style="height: 200px;"></div>
       </div>
     </div>
 
     <!-- Second Row Charts -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <!-- 品类分布 -->
       <div class="chart-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold text-gray-900">品类分布</h3>
           <a href="pages/category.html" class="text-sm text-blue-500 hover:underline">查看详情 →</a>
         </div>
         <div id="categoryChart" style="height: 280px;"></div>
       </div>
-      <!-- 事业部项目分布 -->
       <div class="chart-card bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold text-gray-900">事业部项目分布</h3>
           <a href="pages/bu.html" class="text-sm text-blue-500 hover:underline">查看详情 →</a>
         </div>
@@ -220,34 +169,21 @@
         </div>
       </div>
 
-      <!-- Projects Tab -->
       <div id="contentProjects" class="p-6">
         <div class="flex items-center justify-between mb-6">
           <div class="flex items-center gap-4">
             <div class="relative">
               <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-              <input type="text" id="searchInput" placeholder="搜索产品型号..." class="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 w-64">
+              <input type="text" id="searchInput" oninput="filterData()" placeholder="搜索产品型号..." class="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 w-64">
             </div>
-            <select id="buFilter" class="appearance-none border border-gray-200 px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+            <select id="buFilter" onchange="filterData()" class="appearance-none border border-gray-200 px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
               <option value="">全部事业部</option>
-              <option value="智能穿戴">智能穿戴</option>
-              <option value="智能家居">智能家居</option>
-              <option value="创新事业部">创新事业部</option>
-              <option value="TikTok事业部">TikTok事业部</option>
-              <option value="Temu事业部">Temu事业部</option>
             </select>
-            <select id="categoryFilter" class="appearance-none border border-gray-200 px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+            <select id="categoryFilter" onchange="filterData()" class="appearance-none border border-gray-200 px-4 py-2 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
               <option value="">全部品类</option>
-              <option value="IPC">IPC</option>
-              <option value="耳机">耳机</option>
-              <option value="APP">APP</option>
-              <option value="录音笔">录音笔</option>
-              <option value="翻译器">翻译器</option>
-              <option value="Tracker">Tracker</option>
-              <option value="音箱">音箱</option>
             </select>
           </div>
-          <button class="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm">
+          <button onclick="exportData()" class="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm">
             <i class="fas fa-download"></i>
             导出数据
           </button>
@@ -261,31 +197,26 @@
                 <th class="pb-3 font-medium">事业部</th>
                 <th class="pb-3 font-medium">供应商</th>
                 <th class="pb-3 font-medium">项目经理</th>
-                <th class="pb-3 font-medium">开发类型</th>
                 <th class="pb-3 font-medium">项目状态</th>
                 <th class="pb-3 font-medium">交付状态</th>
               </tr>
             </thead>
-            <tbody id="projectsTableBody">
-              <!-- Dynamic content -->
-            </tbody>
+            <tbody id="projectsTableBody"></tbody>
           </table>
         </div>
         <div class="mt-4 flex items-center justify-between">
-          <p class="text-sm text-gray-500">显示 <span id="showingCount">1-10</span> 共 <span id="totalCount">82</span> 条</p>
+          <p class="text-sm text-gray-500">显示 <span id="showingCount">0</span> 条</p>
           <div class="flex items-center gap-2">
-            <button class="px-3 py-1 border border-gray-200 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" id="prevPage" disabled>上一页</button>
-            <button class="px-3 py-1 border border-gray-200 rounded text-sm hover:bg-gray-50" id="nextPage">下一页</button>
+            <button class="px-3 py-1 border border-gray-200 rounded text-sm text-gray-500 hover:bg-gray-50 disabled:opacity-50" id="prevPage" onclick="prevPage()">上一页</button>
+            <button class="px-3 py-1 border border-gray-200 rounded text-sm hover:bg-gray-50" id="nextPage" onclick="nextPage()">下一页</button>
           </div>
         </div>
       </div>
 
-      <!-- Suppliers Tab -->
       <div id="contentSuppliers" class="p-6 hidden">
         <div id="suppliersChart" style="height: 400px;"></div>
       </div>
 
-      <!-- PM Tab -->
       <div id="contentPM" class="p-6 hidden">
         <div id="pmChart" style="height: 400px;"></div>
       </div>
@@ -293,131 +224,67 @@
   </main>
 
   <script>
-    // Sample data (82 records from the bitable)
-    const projects = [
-      { id: "CB184", category: "IPC", subCategory: "4G低功耗球机", bu: "智能家居", supplier: "瑞博斯", pm: "陈俊成", devType: "自主研发", status: "已交付", deliveryStatus: "延期40天交付", koPlan: "2025-03-01", koActual: "2025-03-01", drPlan: "2025-07-01", drActual: "2025-07-01", crPlan: "2025-11-01", crActual: "2025-12-11", deliveryPlan: "2025-11-01", deliveryActual: "2025-12-11" },
-      { id: "CB104", category: "IPC", subCategory: "4G低功耗球机", bu: "创新事业部", supplier: "瑞博斯", pm: "陈俊成", devType: "选品", status: "已交付", deliveryStatus: "如期交付", koPlan: "2024-11-01", koActual: "2024-11-01", drPlan: "2025-03-01", drActual: "2025-03-01", crPlan: "2025-07-01", crActual: "2025-07-01", deliveryPlan: "2025-07-01", deliveryActual: "2025-07-01" },
-      { id: "XC220", category: "IPC", subCategory: "4G行车记录仪", bu: "智能家居", supplier: "拓普", pm: "陈俊成", devType: "联合开发", status: "已交付", deliveryStatus: "延期15天交付", koPlan: "2024-10-01", koActual: "2024-10-01", drPlan: "2025-02-01", drActual: "2025-02-01", crPlan: "2025-06-01", crActual: "2025-06-15", deliveryPlan: "2025-06-01", deliveryActual: "2025-06-15" },
-      { id: "DC54S", category: "IPC", subCategory: "wifi低功耗球机", bu: "智能家居", supplier: "智云", pm: "陈俊成", devType: "联合开发", status: "已交付", deliveryStatus: "如期交付", koPlan: "2024-12-01", koActual: "2024-12-01", drPlan: "2025-04-01", drActual: "2025-04-01", crPlan: "2025-08-01", crActual: "2025-08-01", deliveryPlan: "2025-08-01", deliveryActual: "2025-08-01" },
-      { id: "QB95S", category: "IPC", subCategory: "4G低功耗卡片机", bu: "智能家居", supplier: "瑞博斯", pm: "陈俊成", devType: "联合开发", status: "已交付", deliveryStatus: "如期交付", koPlan: "2025-01-01", koActual: "2025-01-01", drPlan: "2025-05-01", drActual: "2025-05-01", crPlan: "2025-09-01", crActual: "2025-09-01", deliveryPlan: "2025-09-01", deliveryActual: "2025-09-01" },
-      { id: "BF63S", category: "IPC", subCategory: "wifi喂鸟摄像机", bu: "智能家居", supplier: "天诺", pm: "陈俊成", devType: "选品", status: "已交付", deliveryStatus: "如期交付", koPlan: "2025-01-01", koActual: "2025-01-01", drPlan: "2025-05-01", drActual: "2025-04-01", crPlan: "2025-09-01", crActual: "2025-09-01", deliveryPlan: "2025-09-01", deliveryActual: "2025-09-01" },
-      { id: "BB13S", category: "IPC", subCategory: "wifi鸟浴摄像机", bu: "智能家居", supplier: "达创", pm: "陈俊成", devType: "联合开发", status: "已交付", deliveryStatus: "如期交付", koPlan: "2025-02-01", koActual: "2025-02-01", drPlan: "2025-06-01", drActual: "2025-06-01", crPlan: "2025-10-01", crActual: "2025-10-01", deliveryPlan: "2025-10-01", deliveryActual: "2025-10-01" },
-      { id: "AC48S", category: "IPC", subCategory: "wifi低功耗球机", bu: "智能家居", supplier: "瑞博斯", pm: "谢洪洪", devType: "自主研发", status: "开发中", deliveryStatus: "正常进行中", koPlan: "2025-08-01", koActual: "2025-08-01", drPlan: "2025-12-01", drActual: "-", crPlan: "2026-04-01", crActual: "-", deliveryPlan: "2026-04-01", deliveryActual: "-" },
-      { id: "TR100", category: "Tracker", subCategory: "Tracker定位器", bu: "智能穿戴", supplier: "品米", pm: "谢洪洪", devType: "自主研发", status: "已交付", deliveryStatus: "如期交付", koPlan: "2025-03-01", koActual: "2025-03-01", drPlan: "2025-07-01", drActual: "2025-07-01", crPlan: "2025-11-01", crActual: "2025-11-01", deliveryPlan: "2025-11-01", deliveryActual: "2025-11-01" },
-      { id: "EP200", category: "耳机", subCategory: "头戴降噪耳机", bu: "智能穿戴", supplier: "大声", pm: "谢洪洪", devType: "联合开发", status: "项目暂停", deliveryStatus: "暂停中", koPlan: "2025-05-01", koActual: "2025-05-01", drPlan: "2025-09-01", drActual: "-", crPlan: "2026-01-01", crActual: "-", deliveryPlan: "2026-01-01", deliveryActual: "-" }
-    ];
+    let allData = [];
+    let filteredData = [];
+    let currentPage = 1;
+    const pageSize = 20;
 
-    // Stats calculation
-    const totalProjects = 82;
-    const delivered = 68;
-    const inProgress = 8;
-    const delayed = 6;
-    const cancelled = 3;
-    const onTimeRate = "82%";
+    async function loadData() {
+      try {
+        const response = await fetch('pages/data.json');
+        const data = await response.json();
+        allData = data.records || [];
+        document.getElementById('updateTime').textContent = '数据更新时间: ' + new Date(data.updateTime).toLocaleString('zh-CN');
+        renderStats();
+        renderCharts();
+        initFilters();
+        filterData();
+        document.getElementById('loadingIndicator').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        document.getElementById('updateTime').textContent = '数据加载失败，请刷新页面';
+      }
+    }
 
-    document.getElementById('totalProjects').textContent = totalProjects;
-    document.getElementById('deliveredCount').textContent = delivered;
-    document.getElementById('inProgressCount').textContent = inProgress;
-    document.getElementById('delayedCount').textContent = delayed;
-    document.getElementById('cancelledCount').textContent = cancelled;
-    document.getElementById('onTimeRate').textContent = onTimeRate;
+    function getField(record, fieldName) {
+      const field = record.fields[fieldName];
+      if (field === null || field === undefined) return '';
+      if (typeof field === 'string') return field;
+      if (typeof field === 'number') return field;
+      if (Array.isArray(field)) {
+        return field.map(f => f.text || f).join(', ');
+      }
+      if (typeof field === 'object' && field.value) {
+        return field.value.map(v => v.text || v).join(', ');
+      }
+      return String(field);
+    }
 
-    // Chart initialization
-    function initCharts() {
-      // KO Chart
-      const koChart = echarts.init(document.getElementById('koChart'));
-      koChart.setOption({
-        series: [{
-          type: 'gauge',
-          startAngle: 180,
-          endAngle: 0,
-          min: 0,
-          max: 100,
-          splitNumber: 5,
-          itemStyle: { color: '#22c55e' },
-          progress: { show: true, width: 18 },
-          pointer: { show: false },
-          axisLine: { lineStyle: { width: 18, color: [[1, '#e5e7eb']] } },
-          axisTick: { show: false },
-          splitLine: { show: false },
-          axisLabel: { show: false },
-          anchor: { show: false },
-          title: { show: false },
-          detail: {
-            valueAnimation: true,
-            fontSize: 28,
-            fontWeight: 'bold',
-            color: '#22c55e',
-            offsetCenter: [0, '10%'],
-            formatter: '{value}%'
-          },
-          data: [{ value: 95 }]
-        }]
+    function renderStats() {
+      const total = allData.length;
+      const delivered = allData.filter(r => getField(r, '项目状态') === '已交付').length;
+      const inProgress = allData.filter(r => getField(r, '项目状态') === '开发中').length;
+      const cancelled = allData.filter(r => ['项目取消', '项目失败', '项目暂停'].includes(getField(r, '项目状态'))).length;
+      const onTime = allData.filter(r => getField(r, '交付及时性') === '如期交付').length;
+      const koAchieved = allData.filter(r => getField(r, 'KO达成') === '已达成').length;
+      
+      document.getElementById('totalProjects').textContent = total;
+      document.getElementById('deliveredCount').textContent = delivered;
+      document.getElementById('inProgressCount').textContent = inProgress;
+      document.getElementById('cancelledCount').textContent = cancelled;
+      document.getElementById('onTimeRate').textContent = total > 0 ? Math.round(onTime / total * 100) + '%' : '-';
+      document.getElementById('koRate').textContent = total > 0 ? Math.round(koAchieved / total * 100) + '%' : '-';
+    }
+
+    function renderCharts() {
+      // Category distribution
+      const categoryCount = {};
+      allData.forEach(r => {
+        const cat = getField(r, '品类') || '未知';
+        categoryCount[cat] = (categoryCount[cat] || 0) + 1;
       });
-
-      // DR Chart
-      const drChart = echarts.init(document.getElementById('drChart'));
-      drChart.setOption({
-        series: [{
-          type: 'gauge',
-          startAngle: 180,
-          endAngle: 0,
-          min: 0,
-          max: 100,
-          splitNumber: 5,
-          itemStyle: { color: '#3b82f6' },
-          progress: { show: true, width: 18 },
-          pointer: { show: false },
-          axisLine: { lineStyle: { width: 18, color: [[1, '#e5e7eb']] } },
-          axisTick: { show: false },
-          splitLine: { show: false },
-          axisLabel: { show: false },
-          anchor: { show: false },
-          title: { show: false },
-          detail: {
-            valueAnimation: true,
-            fontSize: 28,
-            fontWeight: 'bold',
-            color: '#3b82f6',
-            offsetCenter: [0, '10%'],
-            formatter: '{value}%'
-          },
-          data: [{ value: 88 }]
-        }]
-      });
-
-      // CR Chart
-      const crChart = echarts.init(document.getElementById('crChart'));
-      crChart.setOption({
-        series: [{
-          type: 'gauge',
-          startAngle: 180,
-          endAngle: 0,
-          min: 0,
-          max: 100,
-          splitNumber: 5,
-          itemStyle: { color: '#8b5cf6' },
-          progress: { show: true, width: 18 },
-          pointer: { show: false },
-          axisLine: { lineStyle: { width: 18, color: [[1, '#e5e7eb']] } },
-          axisTick: { show: false },
-          splitLine: { show: false },
-          axisLabel: { show: false },
-          anchor: { show: false },
-          title: { show: false },
-          detail: {
-            valueAnimation: true,
-            fontSize: 28,
-            fontWeight: 'bold',
-            color: '#8b5cf6',
-            offsetCenter: [0, '10%'],
-            formatter: '{value}%'
-          },
-          data: [{ value: 72 }]
-        }]
-      });
-
-      // Category Chart
+      
       const categoryChart = echarts.init(document.getElementById('categoryChart'));
       categoryChart.setOption({
         tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
@@ -426,53 +293,248 @@
           type: 'pie',
           radius: ['45%', '70%'],
           center: ['40%', '50%'],
-          avoidLabelOverlap: false,
           itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
           label: { show: false },
           emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
-          data: [
-            { value: 48, name: 'IPC', itemStyle: { color: '#3b82f6' } },
-            { value: 15, name: '耳机', itemStyle: { color: '#22c55e' } },
-            { value: 8, name: 'APP', itemStyle: { color: '#8b5cf6' } },
-            { value: 5, name: '录音笔', itemStyle: { color: '#f59e0b' } },
-            { value: 3, name: '翻译器', itemStyle: { color: '#ef4444' } },
-            { value: 2, name: 'Tracker', itemStyle: { color: '#06b6d4' } },
-            { value: 1, name: '音箱', itemStyle: { color: '#84cc16' } }
-          ]
+          data: Object.entries(categoryCount).map(([name, value]) => ({ value, name }))
         }]
       });
 
-      // BU Chart
+      // BU distribution
+      const buCount = {};
+      allData.forEach(r => {
+        const bu = getField(r, '事业部') || '未知';
+        buCount[bu] = (buCount[bu] || 0) + 1;
+      });
+      
       const buChart = echarts.init(document.getElementById('buChart'));
       buChart.setOption({
         tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: { type: 'value' },
-        yAxis: { type: 'category', data: ['智能穿戴', '智能家居', '创新事业部', 'TikTok事业部', 'Temu事业部'], axisLabel: { fontSize: 12 } },
+        yAxis: { type: 'category', data: Object.keys(buCount), axisLabel: { fontSize: 12 } },
         series: [{
           type: 'bar',
-          data: [
-            { value: 12, itemStyle: { color: '#3b82f6' } },
-            { value: 45, itemStyle: { color: '#22c55e' } },
-            { value: 15, itemStyle: { color: '#8b5cf6' } },
-            { value: 7, itemStyle: { color: '#f59e0b' } },
-            { value: 3, itemStyle: { color: '#ef4444' } }
-          ],
+          data: Object.values(buCount),
           barWidth: 20,
-          itemStyle: { borderRadius: [0, 4, 4, 0] }
+          itemStyle: { borderRadius: [0, 4, 4, 0], color: '#3b82f6' }
+        }]
+      });
+
+      // KO/DR/CR rate gauges
+      const koRate = allData.filter(r => getField(r, 'KO达成') === '已达成').length / allData.length * 100;
+      const drRate = allData.filter(r => getField(r, 'DR达成') === '已达成').length / allData.length * 100;
+      const crRate = allData.filter(r => getField(r, 'CR达成') === '已达成').length / allData.length * 100;
+
+      const koChart = echarts.init(document.getElementById('koChart'));
+      koChart.setOption({
+        series: [{
+          type: 'gauge',
+          startAngle: 180,
+          endAngle: 0,
+          min: 0,
+          max: 100,
+          itemStyle: { color: '#22c55e' },
+          progress: { show: true, width: 12 },
+          pointer: { show: false },
+          axisLine: { lineStyle: { width: 12, color: [[1, '#e5e7eb']] } },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          anchor: { show: false },
+          title: { show: false },
+          detail: { fontSize: 20, fontWeight: 'bold', color: '#22c55e', offsetCenter: [0, '10%'], formatter: '{value}%' },
+          data: [{ value: Math.round(koRate) }]
+        }]
+      });
+
+      const drChart = echarts.init(document.getElementById('drChart'));
+      drChart.setOption({
+        series: [{
+          type: 'gauge',
+          startAngle: 180,
+          endAngle: 0,
+          min: 0,
+          max: 100,
+          itemStyle: { color: '#3b82f6' },
+          progress: { show: true, width: 12 },
+          pointer: { show: false },
+          axisLine: { lineStyle: { width: 12, color: [[1, '#e5e7eb']] } },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          anchor: { show: false },
+          title: { show: false },
+          detail: { fontSize: 20, fontWeight: 'bold', color: '#3b82f6', offsetCenter: [0, '10%'], formatter: '{value}%' },
+          data: [{ value: Math.round(drRate) }]
+        }]
+      });
+
+      const crChart = echarts.init(document.getElementById('crChart'));
+      crChart.setOption({
+        series: [{
+          type: 'gauge',
+          startAngle: 180,
+          endAngle: 0,
+          min: 0,
+          max: 100,
+          itemStyle: { color: '#8b5cf6' },
+          progress: { show: true, width: 12 },
+          pointer: { show: false },
+          axisLine: { lineStyle: { width: 12, color: [[1, '#e5e7eb']] } },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          anchor: { show: false },
+          title: { show: false },
+          detail: { fontSize: 20, fontWeight: 'bold', color: '#8b5cf6', offsetCenter: [0, '10%'], formatter: '{value}%' },
+          data: [{ value: Math.round(crRate) }]
+        }]
+      });
+
+      // Supplier chart
+      const supplierCount = {};
+      allData.forEach(r => {
+        const sup = getField(r, '供应商') || '未知';
+        supplierCount[sup] = (supplierCount[sup] || 0) + 1;
+      });
+      const topSuppliers = Object.entries(supplierCount).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      
+      const suppliersChart = echarts.init(document.getElementById('suppliersChart'));
+      suppliersChart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: { type: 'value' },
+        yAxis: { type: 'category', data: topSuppliers.map(s => s[0]), axisLabel: { fontSize: 11 } },
+        series: [{
+          type: 'bar',
+          data: topSuppliers.map(s => s[1]),
+          barWidth: 20,
+          itemStyle: { borderRadius: [0, 4, 4, 0], color: '#f59e0b' }
+        }]
+      });
+
+      // PM chart
+      const pmCount = {};
+      allData.forEach(r => {
+        const pm = getField(r, '项目经理') || '未知';
+        pmCount[pm] = (pmCount[pm] || 0) + 1;
+      });
+      
+      const pmChart = echarts.init(document.getElementById('pmChart'));
+      pmChart.setOption({
+        tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+        legend: { orient: 'vertical', right: 10, top: 'center', textStyle: { fontSize: 12 } },
+        series: [{
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['40%', '50%'],
+          itemStyle: { borderRadius: 8, borderColor: '#fff', borderWidth: 2 },
+          label: { show: false },
+          emphasis: { label: { show: true, fontSize: 14, fontWeight: 'bold' } },
+          data: Object.entries(pmCount).map(([name, value]) => ({ value, name }))
         }]
       });
 
       window.addEventListener('resize', () => {
+        categoryChart.resize();
+        buChart.resize();
         koChart.resize();
         drChart.resize();
         crChart.resize();
-        categoryChart.resize();
-        buChart.resize();
+        suppliersChart.resize();
+        pmChart.resize();
       });
     }
 
-    // Tab switching
+    function initFilters() {
+      const bus = [...new Set(allData.map(r => getField(r, '事业部')).filter(Boolean))];
+      const categories = [...new Set(allData.map(r => getField(r, '品类')).filter(Boolean))];
+      
+      const buSelect = document.getElementById('buFilter');
+      bus.forEach(bu => {
+        const opt = document.createElement('option');
+        opt.value = bu;
+        opt.textContent = bu;
+        buSelect.appendChild(opt);
+      });
+      
+      const catSelect = document.getElementById('categoryFilter');
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.textContent = cat;
+        catSelect.appendChild(opt);
+      });
+    }
+
+    function filterData() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const bu = document.getElementById('buFilter').value;
+      const year = document.getElementById('yearFilter').value;
+      const category = document.getElementById('categoryFilter').value;
+      
+      filteredData = allData.filter(r => {
+        const model = getField(r, '产品型号').toLowerCase();
+        const rbu = getField(r, '事业部');
+        const rcategory = getField(r, '品类');
+        const ryear = getField(r, '计划交付年度');
+        
+        if (search && !model.includes(search)) return false;
+        if (bu && rbu !== bu) return false;
+        if (category && rcategory !== category) return false;
+        if (year !== 'all' && ryear !== year) return false;
+        return true;
+      });
+      
+      currentPage = 1;
+      renderProjectsTable();
+    }
+
+    function renderProjectsTable() {
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const pageData = filteredData.slice(start, end);
+      
+      const tbody = document.getElementById('projectsTableBody');
+      tbody.innerHTML = pageData.map(r => {
+        const status = getField(r, '项目状态');
+        const deliveryStatus = getField(r, '交付状态');
+        const statusClass = status === '已交付' ? 'bg-green-50 text-green-600' : 
+                           status === '开发中' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600';
+        const deliveryClass = deliveryStatus.includes('延期') ? 'text-red-500' : 
+                              deliveryStatus.includes('暂停') ? 'text-gray-500' : 'text-green-600';
+        
+        return `<tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+          <td class="py-4 font-medium text-gray-900">${getField(r, '产品型号')}</td>
+          <td class="py-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">${getField(r, '品类')}</span></td>
+          <td class="py-4 text-sm text-gray-600">${getField(r, '事业部')}</td>
+          <td class="py-4 text-sm text-gray-600">${getField(r, '供应商')}</td>
+          <td class="py-4 text-sm text-gray-600">${getField(r, '项目经理')}</td>
+          <td class="py-4"><span class="px-2 py-1 rounded text-xs ${statusClass}">${status}</span></td>
+          <td class="py-4 text-sm ${deliveryClass}">${deliveryStatus}</td>
+        </tr>`;
+      }).join('');
+      
+      document.getElementById('showingCount').textContent = filteredData.length;
+      document.getElementById('prevPage').disabled = currentPage === 1;
+      document.getElementById('nextPage').disabled = end >= filteredData.length;
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderProjectsTable();
+      }
+    }
+
+    function nextPage() {
+      if (currentPage * pageSize < filteredData.length) {
+        currentPage++;
+        renderProjectsTable();
+      }
+    }
+
     function showTab(tab) {
       ['projects', 'suppliers', 'pm'].forEach(t => {
         document.getElementById('content' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('hidden');
@@ -484,31 +546,27 @@
       document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.remove('border-transparent', 'text-gray-500');
     }
 
-    // Render projects table
-    function renderProjectsTable() {
-      const tbody = document.getElementById('projectsTableBody');
-      tbody.innerHTML = projects.map(p => `
-        <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
-          <td class="py-4 font-medium text-gray-900">${p.id}</td>
-          <td class="py-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">${p.category}</span></td>
-          <td class="py-4 text-sm text-gray-600">${p.bu}</td>
-          <td class="py-4 text-sm text-gray-600">${p.supplier}</td>
-          <td class="py-4 text-sm text-gray-600">${p.pm}</td>
-          <td class="py-4 text-sm text-gray-600">${p.devType}</td>
-          <td class="py-4"><span class="px-2 py-1 rounded text-xs ${p.status === '已交付' ? 'bg-green-50 text-green-600' : p.status === '开发中' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}">${p.status}</span></td>
-          <td class="py-4 text-sm ${p.deliveryStatus.includes('延期') ? 'text-red-500' : p.deliveryStatus.includes('暂停') ? 'text-gray-500' : 'text-green-600'}">${p.deliveryStatus}</td>
-        </tr>
-      `).join('');
-      document.getElementById('totalCount').textContent = totalProjects;
-      document.getElementById('showingCount').textContent = `1-${projects.length}`;
+    function syncData() {
+      alert('数据同步由 GitHub Actions 自动执行，每天 09:00 和 12:00 自动更新。\n\n如需立即更新，请在 GitHub Actions 页面手动触发工作流。');
+      window.open('https://github.com/Jasen713/product-project-report/actions/workflows/sync-feishu.yml', '_blank');
     }
 
-    function refreshData() {
-      alert('数据刷新功能 - 实际项目会从飞书API获取最新数据');
+    function exportData() {
+      const csv = ['产品型号,品类,事业部,供应商,项目经理,开发类型,项目状态,交付状态'];
+      filteredData.forEach(r => {
+        csv.push([getField(r, '产品型号'), getField(r, '品类'), getField(r, '事业部'), 
+                  getField(r, '供应商'), getField(r, '项目经理'), getField(r, '开发类型'),
+                  getField(r, '项目状态'), getField(r, '交付状态')].join(','));
+      });
+      
+      const blob = new Blob([csv.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = '产品项目数据_' + new Date().toISOString().slice(0,10) + '.csv';
+      link.click();
     }
 
-    initCharts();
-    renderProjectsTable();
+    loadData();
   </script>
 </body>
 </html>
