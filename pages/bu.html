@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>事业部详情 - 产品项目统计报表</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased">
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="../index.html" class="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center hover:bg-zinc-700 transition">
+          <i class="fas fa-arrow-left text-white"></i>
+        </a>
+        <div>
+          <h1 class="text-xl font-bold text-gray-900">事业部详情</h1>
+          <p class="text-sm text-gray-500">按事业部查看项目数据</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+        <p class="text-3xl font-bold text-gray-900">82</p>
+        <p class="text-sm text-gray-500 mt-1">总项目数</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+        <p class="text-3xl font-bold text-green-500">45</p>
+        <p class="text-sm text-gray-500 mt-1">智能家居</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+        <p class="text-3xl font-bold text-blue-500">12</p>
+        <p class="text-sm text-gray-500 mt-1">智能穿戴</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+        <p class="text-3xl font-bold text-purple-500">15</p>
+        <p class="text-sm text-gray-500 mt-1">创新事业部</p>
+      </div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+        <p class="text-3xl font-bold text-amber-500">10</p>
+        <p class="text-sm text-gray-500 mt-1">TikTok/Temu</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div class="p-6 border-b border-gray-200">
+        <h3 class="text-lg font-bold text-gray-900">各事业部项目列表</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="text-left text-sm text-gray-500 border-b border-gray-200 bg-gray-50">
+              <th class="p-4 font-medium">产品型号</th>
+              <th class="p-4 font-medium">品类</th>
+              <th class="p-4 font-medium">细分品类</th>
+              <th class="p-4 font-medium">供应商</th>
+              <th class="p-4 font-medium">项目经理</th>
+              <th class="p-4 font-medium">项目状态</th>
+              <th class="p-4 font-medium">交付状态</th>
+            </tr>
+          </thead>
+          <tbody id="buTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const buData = [
+      { id: "CB184", category: "IPC", subCategory: "4G低功耗球机", bu: "智能家居", supplier: "瑞博斯", pm: "陈俊成", status: "已交付", deliveryStatus: "延期40天交付" },
+      { id: "XC220", category: "IPC", subCategory: "4G行车记录仪", bu: "智能家居", supplier: "拓普", pm: "陈俊成", status: "已交付", deliveryStatus: "延期15天交付" },
+      { id: "DC54S", category: "IPC", subCategory: "wifi低功耗球机", bu: "智能家居", supplier: "智云", pm: "陈俊成", status: "已交付", deliveryStatus: "如期交付" },
+      { id: "QB95S", category: "IPC", subCategory: "4G低功耗卡片机", bu: "智能家居", supplier: "瑞博斯", pm: "陈俊成", status: "已交付", deliveryStatus: "如期交付" },
+      { id: "BF63S", category: "IPC", subCategory: "wifi喂鸟摄像机", bu: "智能家居", supplier: "天诺", pm: "陈俊成", status: "已交付", deliveryStatus: "如期交付" },
+      { id: "BB13S", category: "IPC", subCategory: "wifi鸟浴摄像机", bu: "智能家居", supplier: "达创", pm: "陈俊成", status: "已交付", deliveryStatus: "如期交付" },
+      { id: "AC48S", category: "IPC", subCategory: "wifi低功耗球机", bu: "智能家居", supplier: "瑞博斯", pm: "谢洪洪", status: "开发中", deliveryStatus: "正常进行中" },
+      { id: "TR100", category: "Tracker", subCategory: "Tracker定位器", bu: "智能穿戴", supplier: "品米", pm: "谢洪洪", status: "已交付", deliveryStatus: "如期交付" },
+      { id: "EP200", category: "耳机", subCategory: "头戴降噪耳机", bu: "智能穿戴", supplier: "大声", pm: "谢洪洪", status: "项目暂停", deliveryStatus: "暂停中" },
+      { id: "CB104", category: "IPC", subCategory: "4G低功耗球机", bu: "创新事业部", supplier: "瑞博斯", pm: "陈俊成", status: "已交付", deliveryStatus: "如期交付" }
+    ];
+
+    document.getElementById('buTableBody').innerHTML = buData.map(p => `
+      <tr class="border-b border-gray-100 hover:bg-gray-50 transition">
+        <td class="p-4 font-medium text-gray-900">${p.id}</td>
+        <td class="p-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">${p.category}</span></td>
+        <td class="p-4 text-sm text-gray-600">${p.subCategory}</td>
+        <td class="p-4 text-sm text-gray-600">${p.supplier}</td>
+        <td class="p-4 text-sm text-gray-600">${p.pm}</td>
+        <td class="p-4"><span class="px-2 py-1 rounded text-xs ${p.status === '已交付' ? 'bg-green-50 text-green-600' : p.status === '开发中' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-600'}">${p.status}</span></td>
+        <td class="p-4 text-sm ${p.deliveryStatus.includes('延期') ? 'text-red-500' : 'text-green-600'}">${p.deliveryStatus}</td>
+      </tr>
+    `).join('');
+  </script>
+</body>
+</html>

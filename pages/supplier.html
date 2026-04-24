@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>供应商排行 - 产品项目统计报表</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased">
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <a href="../index.html" class="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center hover:bg-zinc-700 transition">
+          <i class="fas fa-arrow-left text-white"></i>
+        </a>
+        <div>
+          <h1 class="text-xl font-bold text-gray-900">供应商排行</h1>
+          <p class="text-sm text-gray-500">按供应商统计项目数量</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">供应商项目数量 TOP 10</h3>
+        <div id="supplierChart" style="height: 400px;"></div>
+      </div>
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 overflow-hidden">
+        <h3 class="text-lg font-bold text-gray-900 mb-4">供应商项目列表</h3>
+        <div class="overflow-y-auto" style="max-height: 400px;">
+          <table class="w-full">
+            <thead class="sticky top-0 bg-white">
+              <tr class="text-left text-sm text-gray-500 border-b">
+                <th class="pb-3 font-medium">排名</th>
+                <th class="pb-3 font-medium">供应商</th>
+                <th class="pb-3 font-medium">项目数</th>
+                <th class="pb-3 font-medium">占比</th>
+              </tr>
+            </thead>
+            <tbody id="supplierTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const suppliers = [
+      { name: "瑞博斯", count: 18 },
+      { name: "拓普", count: 12 },
+      { name: "智云", count: 10 },
+      { name: "天诺", count: 8 },
+      { name: "达创", count: 7 },
+      { name: "朗视兴", count: 6 },
+      { name: "创泽视", count: 5 },
+      { name: "卓创", count: 4 },
+      { name: "旭峰", count: 3 },
+      { name: "其他", count: 9 }
+    ];
+
+    const total = 82;
+    document.getElementById('supplierTableBody').innerHTML = suppliers.map((s, i) => `
+      <tr class="border-b border-gray-100 hover:bg-gray-50">
+        <td class="py-3 ${i < 3 ? 'font-bold text-gray-900' : 'text-gray-600'}">${i + 1}</td>
+        <td class="py-3 font-medium">${s.name}</td>
+        <td class="py-3">${s.count}</td>
+        <td class="py-3 text-gray-500">${(s.count / total * 100).toFixed(1)}%</td>
+      </tr>
+    `).join('');
+
+    const supplierChart = echarts.init(document.getElementById('supplierChart'));
+    supplierChart.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { type: 'value' },
+      yAxis: { type: 'category', data: suppliers.map(s => s.name).reverse(), axisLabel: { fontSize: 11 } },
+      series: [{
+        type: 'bar',
+        data: suppliers.map(s => s.count).reverse(),
+        barWidth: 20,
+        itemStyle: { borderRadius: [0, 4, 4, 0], color: '#3b82f6' }
+      }]
+    });
+
+    window.addEventListener('resize', () => supplierChart.resize());
+  </script>
+</body>
+</html>
